@@ -197,11 +197,24 @@ let
   crossPreConfigure =
     if isIOS then ''
       unset MACOSX_DEPLOYMENT_TARGET
+      unset DEVELOPER_DIR
       export IPHONEOS_DEPLOYMENT_TARGET="26.0"
-      # Ensure the iOS Simulator SDK is available on this machine.
-      ${ensureIosSimSDKScript}/bin/ensure-ios-sim-sdk || true
-      export CC_${cargoTargetUnderscore}="${rawClang} -target ${linkerTarget}"
-      export CFLAGS_${cargoTargetUnderscore}="-target ${linkerTarget} -fPIC"
+      
+      # For simulator builds, use the dynamic discovery wrapper.
+      if [ "${if simulator then "true" else "false"}" = "true" ]; then
+        IOS_SDK=$(${ensureIosSimSDKScript}/bin/ensure-ios-sim-sdk) || {
+          echo "Error: Failed to ensure iOS Simulator SDK."
+          exit 1
+        }
+        export SDKROOT="$IOS_SDK"
+      else
+        # For device, we assume the platform path follows convention
+        XCODE_APP=$(${xcodeFinderScript}/bin/find-xcode)
+        export SDKROOT="$XCODE_APP/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+      fi
+
+      export CC_${cargoTargetUnderscore}="${rawClang} -target ${linkerTarget} -isysroot $SDKROOT"
+      export CFLAGS_${cargoTargetUnderscore}="-target ${linkerTarget} -isysroot $SDKROOT -fPIC"
       export CRATE_CC_NO_DEFAULTS="1"
     '' else if isAndroid then ''
       unset MACOSX_DEPLOYMENT_TARGET

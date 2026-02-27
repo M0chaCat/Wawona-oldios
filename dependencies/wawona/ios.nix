@@ -18,17 +18,30 @@ let
   ensureIosSimSDK = xcodeUtils.ensureIosSimSDK;
   xcodeEnv =
     platform: ''
-      if [ -z "''${XCODE_APP:-}" ]; then
-        XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode || true)
-        if [ -n "$XCODE_APP" ]; then
-          export XCODE_APP
-          export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
-          export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
-          # Ensure the iOS Simulator SDK is available before setting SDKROOT.
-          ${ensureIosSimSDK}/bin/ensure-ios-sim-sdk || true
-          export SDKROOT="$DEVELOPER_DIR/Platforms/${if platform == "ios-sim" then "iPhoneSimulator" else if platform == "ios" then "iPhoneOS" else "MacOSX"}.platform/Developer/SDKs/${if platform == "ios-sim" then "iPhoneSimulator" else if platform == "ios" then "iPhoneOS" else "MacOSX"}.sdk"
-        fi
+      # Strip Nix stdenv's DEVELOPER_DIR to bypass the apple-sdk-14.4 fallback
+      unset DEVELOPER_DIR
+      
+      if [ "${platform}" = "ios-sim" ]; then
+        # Use dynamic discovery via xcrun for the simulator
+        IOS_SDK=$(${ensureIosSimSDK}/bin/ensure-ios-sim-sdk) || {
+          echo "Error: Failed to ensure iOS Simulator SDK."
+          exit 1
+        }
+        export SDKROOT="$IOS_SDK"
+        # Find the Developer dir associated with this SDK
+        export DEVELOPER_DIR=$(echo "$SDKROOT" | grep -oP '.*?\.app/Contents/Developer')
+        [ -z "$DEVELOPER_DIR" ] && DEVELOPER_DIR=$(/usr/bin/xcode-select -p)
+        export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+      else
+        # For device/mac, find Xcode and use standard platform paths
+        XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode)
+        export XCODE_APP
+        export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
+        export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+        export SDKROOT="$DEVELOPER_DIR/Platforms/${if platform == "ios" then "iPhoneOS" else "MacOSX"}.platform/Developer/SDKs/${if platform == "ios" then "iPhoneOS" else "MacOSX"}.sdk"
       fi
+      echo "Using SDK: $SDKROOT"
+      echo "Using Developer Dir: $DEVELOPER_DIR"
     '';
   copyDeps =
     dest: ''
