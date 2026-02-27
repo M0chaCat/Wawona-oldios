@@ -90,24 +90,33 @@ rustPlatform.buildRustPackage rec {
   '';
 
   preConfigure = ''
-    # Find real Xcode (rejects Nix store paths / apple-sdk fallbacks).
-    XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode) || {
-      echo "Error: Xcode not found. Install Xcode 16+ from the App Store."
-      exit 1
-    }
-    export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
+    # Strip Nix stdenv's DEVELOPER_DIR to bypass the apple-sdk-14.4 fallback
+    unset DEVELOPER_DIR
 
-    # Ensure the iOS Simulator SDK is downloaded if missing.
-    ${xcodeUtils.ensureIosSimSDK}/bin/ensure-ios-sim-sdk
+    ${if simulator then ''
+      # Ensure the iOS Simulator SDK is downloaded if missing and get its path.
+      IOS_SDK=$(${xcodeUtils.ensureIosSimSDK}/bin/ensure-ios-sim-sdk) || {
+        echo "Error: Failed to ensure iOS Simulator SDK."
+        exit 1
+      }
+    '' else ''
+      # For device, find the latest iPhoneOS SDK path.
+      XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode) || {
+        echo "Error: Xcode not found."
+        exit 1
+      }
+      IOS_SDK="$XCODE_APP/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+    ''}
 
-    export IOS_SDK="$DEVELOPER_DIR/Platforms/${if simulator then "iPhoneSimulator" else "iPhoneOS"}.platform/Developer/SDKs/${if simulator then "iPhoneSimulator" else "iPhoneOS"}.sdk"
     export SDKROOT="$IOS_SDK"
+    export IOS_SDK
 
-    if [ ! -d "$IOS_SDK" ]; then
-      echo "Error: iOS SDK not found at $IOS_SDK"
-      exit 1
-    fi
+    # Find the Developer dir associated with this SDK
+    export DEVELOPER_DIR=$(echo "$IOS_SDK" | grep -oP '.*?\.app/Contents/Developer')
+    [ -z "$DEVELOPER_DIR" ] && DEVELOPER_DIR=$(/usr/bin/xcode-select -p)
+
     echo "Using iOS SDK: $IOS_SDK"
+    echo "Using Developer Dir: $DEVELOPER_DIR"
 
     export FFMPEG_DIR="${nativeDeps.ffmpeg}"
     export FFMPEG_PREFIX="${nativeDeps.ffmpeg}"

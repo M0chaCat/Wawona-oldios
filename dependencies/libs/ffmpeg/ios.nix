@@ -38,19 +38,34 @@ pkgs.stdenv.mkDerivation {
 
   # Configure phase to set up the environment
   preConfigure = ''
-    # Find real Xcode (rejects Nix store paths / apple-sdk fallbacks).
-    XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode) || {
-      echo "Error: Xcode not found. Install Xcode from the App Store."
-      exit 1
-    }
-    export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
+    # Strip Nix stdenv's DEVELOPER_DIR to bypass the apple-sdk-14.4 fallback
+    unset DEVELOPER_DIR
 
+    ${if simulator then ''
+      # Ensure the iOS Simulator SDK is downloaded if missing and get its path.
+      IOS_SDK_PATH=$(${ensureIosSimSDK}/bin/ensure-ios-sim-sdk) || {
+        echo "Error: Failed to ensure iOS Simulator SDK."
+        exit 1
+      }
+    '' else ''
+      # For device, find the latest iPhoneOS SDK path.
+      XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode) || {
+        echo "Error: Xcode not found."
+        exit 1
+      }
+      IOS_SDK_PATH="$XCODE_APP/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+    ''}
+
+    export SDKROOT="$IOS_SDK_PATH"
+    export IOS_SDK_PATH
+
+    # Find the Developer dir associated with this SDK
+    export DEVELOPER_DIR=$(echo "$IOS_SDK_PATH" | grep -oP '.*?\.app/Contents/Developer')
+    [ -z "$DEVELOPER_DIR" ] && DEVELOPER_DIR=$(/usr/bin/xcode-select -p)
+
+    echo "Using iOS SDK: $IOS_SDK_PATH"
     echo "Using Developer Dir: $DEVELOPER_DIR"
 
-    # Ensure the iOS Simulator SDK is downloaded if missing.
-    ${ensureIosSimSDK}/bin/ensure-ios-sim-sdk
-
-    export IOS_SDK_PATH="$DEVELOPER_DIR/Platforms/${if simulator then "iPhoneSimulator" else "iPhoneOS"}.platform/Developer/SDKs/${if simulator then "iPhoneSimulator" else "iPhoneOS"}.sdk"
     export MACOS_SDK_PATH="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
 
     if [ ! -d "$IOS_SDK_PATH" ]; then
