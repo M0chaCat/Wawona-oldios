@@ -28,7 +28,14 @@
           (import rust-overlay)
           (self: super: {
             rustToolchain = super.rust-bin.stable.latest.default.override {
-              targets = [ "aarch64-apple-ios" "aarch64-apple-ios-sim" "aarch64-linux-android" ];
+              targets = [ "aarch64-apple-ios" "aarch64-apple-ios-sim" ];
+            };
+            rustToolchainAndroid = super.rust-bin.stable.latest.default.override {
+              targets = [ "aarch64-linux-android" ];
+            };
+            rustPlatformAndroid = super.makeRustPlatform {
+              cargo = self.rustToolchainAndroid;
+              rustc = self.rustToolchainAndroid;
             };
             rustPlatform = super.makeRustPlatform {
               cargo = self.rustToolchain;
@@ -40,7 +47,6 @@
         config = {
           allowUnfree = true;
           allowUnsupportedSystem = true;
-          android_sdk.accept_license = true;
         };
       };
 
@@ -250,7 +256,15 @@
           wayland-scanner = libwayland-macos;
         };
 
-        androidSDK = pkgs.androidenv.composeAndroidPackages {
+        androidHostPkgs = import nixpkgs {
+          inherit system;
+          config = {
+            allowUnfree = true;
+            android_sdk.accept_license = true;
+          };
+        };
+
+        androidSDK = androidHostPkgs.androidenv.composeAndroidPackages {
           cmdLineToolsVersion = "8.0";
           buildToolsVersions = [ "36.0.0" ];
           platformToolsVersion = "35.0.2";
