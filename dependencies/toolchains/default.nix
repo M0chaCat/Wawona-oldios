@@ -294,11 +294,6 @@ let
         inherit lib pkgs common;
         buildModule = macosModule;
       }
-    else if name == "spirv-llvm-translator" then
-      (import ../libs/spirv-llvm-translator/macos.nix) {
-        inherit lib pkgs common;
-        buildModule = macosModule;
-      }
     else if name == "sshpass" then
       (import ../libs/sshpass/macos.nix) {
         inherit lib pkgs common;

@@ -29,6 +29,7 @@ let
     "-Dbuildtype=release"
     "-Dglvnd=disabled"
     "-Dgallium-va=disabled"
+    "-Dllvm=disabled"
   ];
   patches = [ ];
   getDeps =
@@ -41,20 +42,10 @@ let
         pkgs.zstd
       else if depName == "expat" then
         pkgs.expat
-      else if depName == "llvm" then
-        pkgs.llvmPackages.llvm
-      else if depName == "clang" then
-        pkgs.llvmPackages.clang-unwrapped.lib # Clang libraries
-      else if depName == "clang-dev" then
-        pkgs.llvmPackages.clang-unwrapped.dev # Clang headers
-      else if depName == "spirv-llvm-translator" then
-        pkgs.spirv-llvm-translator
       else if depName == "spirv-tools" then
         pkgs.spirv-tools
       else if depName == "spirv-headers" then
         pkgs.spirv-headers
-      else if depName == "libclc" then
-        pkgs.libclc
       # Lua is optional - only needed for Freedreno tools, not kosmickrisp
       # else if depName == "lua" then pkgs.lua5_4
       else
@@ -64,13 +55,8 @@ let
     "zlib"
     "zstd"
     "expat"
-    "llvm"
-    "clang"
-    "clang-dev"
-    "spirv-llvm-translator"
     "spirv-tools"
     "spirv-headers"
-    "libclc"
   ];
 in
 pkgs.stdenv.mkDerivation {
@@ -97,40 +83,7 @@ pkgs.stdenv.mkDerivation {
   # Mesa's meson.build will find them via pkg-config or direct linking
   buildInputs = depInputs;
   postPatch = ''
-        echo "=== Patching Mesa meson.build for Clang library detection ==="
-        # Fix Clang library detection: Mesa expects Clang libraries in LLVM libdir
-        # but in Nixpkgs, Clang libraries are in a separate package (clang-unwrapped.lib)
-        # Write patch lines to a temp file to avoid Nix string escaping issues
-        # Use $TMPDIR instead of /tmp for Nix sandbox compatibility
-        CLANG_PATCH_FILE="$TMPDIR/clang_patch.txt"
-        cat > "$CLANG_PATCH_FILE" <<ENDPATCH
-      # Try multiple locations for Clang libraries
-      # On some systems (like Nix), Clang libraries may be in a separate location
-      clang_libdirs = [llvm_libdir]
-      # Also check common alternative locations
-      clang_libdirs += [join_paths(llvm_libdir, '..', 'clang', 'lib')]
-      # In Nixpkgs, Clang libraries are in clang-unwrapped.lib, not LLVM libdir
-      clang_libdirs += ['${pkgs.llvmPackages.clang-unwrapped.lib}/lib']
-    ENDPATCH
-        
-        # Insert after llvm_libdir line
-        sed -i '/llvm_libdir = dep_llvm.get_variable/r '"$CLANG_PATCH_FILE" meson.build
-        
-        # Replace dep_clang line to use clang_libdirs instead of llvm_libdir
-        substituteInPlace meson.build \
-          --replace \
-          "dep_clang = cpp.find_library('clang-cpp', dirs : llvm_libdir, required : false)" \
-          "dep_clang = cpp.find_library('clang-cpp', dirs : clang_libdirs, required : false)"
-        
-        # Replace the foreach loop to use clang_libdirs instead of llvm_libdir
-        substituteInPlace meson.build \
-          --replace \
-          "dep_clang += cpp.find_library(m, dirs : llvm_libdir, required : true)" \
-          "dep_clang += cpp.find_library(m, dirs : clang_libdirs, required : true)"
-        
-        echo "Applied Clang library detection patch"
-        echo "Verifying patch was applied:"
-        grep -A 7 "clang_libdirs = \[llvm_libdir\]" meson.build || echo "WARNING: Patch may not have been applied correctly"
+    echo "Skipping Clang patch since LLVM is disabled."
   '';
   configurePhase = ''
     runHook preConfigure
@@ -139,22 +92,13 @@ pkgs.stdenv.mkDerivation {
     MACOS_SDK="${pkgs.apple-sdk_26}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
     MACOS_VERSION_MIN="26.0"
 
-    # Link Metal frameworks and LLVM/Clang libraries explicitly
-    # Dependencies (zlib, zstd, expat) are in buildInputs, so Meson will find them automatically
-    # But we can add explicit library paths to ensure proper linking
-    LLVM_LIBDIR="${pkgs.llvmPackages.llvm.lib}/lib"
-    export LDFLAGS="-isysroot $MACOS_SDK -mmacosx-version-min=$MACOS_VERSION_MIN -framework Metal -framework MetalKit -framework Foundation -framework IOKit -L$LLVM_LIBDIR"
-    # Clang headers are available via buildInputs (clang-unwrapped.dev)
-    export CPPFLAGS="-isysroot $MACOS_SDK -mmacosx-version-min=$MACOS_VERSION_MIN -I${pkgs.llvmPackages.llvm.dev}/include"
+    # Link Metal frameworks
+    export LDFLAGS="-isysroot $MACOS_SDK -mmacosx-version-min=$MACOS_VERSION_MIN -framework Metal -framework MetalKit -framework Foundation -framework IOKit"
+    export CPPFLAGS="-isysroot $MACOS_SDK -mmacosx-version-min=$MACOS_VERSION_MIN"
     export CFLAGS="-isysroot $MACOS_SDK -mmacosx-version-min=$MACOS_VERSION_MIN"
     export CXXFLAGS="-isysroot $MACOS_SDK -mmacosx-version-min=$MACOS_VERSION_MIN"
 
-    # Set PKG_CONFIG_PATH for SPIRV dependencies and LLVM
-    # zlib, zstd, expat are in buildInputs and Meson will find them automatically
-    # Lua is optional and not needed for kosmickrisp
-    export PKG_CONFIG_PATH="${pkgs.spirv-llvm-translator}/lib/pkgconfig:${pkgs.spirv-tools}/lib/pkgconfig:${pkgs.spirv-headers}/lib/pkgconfig:${pkgs.llvmPackages.llvm.dev}/lib/pkgconfig:''${PKG_CONFIG_PATH:-}"
-    # Ensure llvm-config is in PATH (Mesa uses this to get LLVM_LIBRARY_DIR)
-    export PATH="${pkgs.llvmPackages.llvm.dev}/bin:''${PATH}"
+    export PKG_CONFIG_PATH="${pkgs.spirv-tools}/lib/pkgconfig:${pkgs.spirv-headers}/lib/pkgconfig:''${PKG_CONFIG_PATH:-}"
 
     # Set SDKROOT for Meson to find Metal frameworks
     export SDKROOT="$MACOS_SDK"
