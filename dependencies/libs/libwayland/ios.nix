@@ -97,6 +97,9 @@ in
 pkgs.stdenv.mkDerivation {
   name = "libwayland-ios";
   inherit src patches;
+  
+  # Allow access to Xcode SDKs and toolchain
+  __noChroot = true;
   nativeBuildInputs = with buildPackages; [
     meson
     ninja
