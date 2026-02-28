@@ -12,7 +12,12 @@ let
   # Use pixman from nixpkgs source
   pixmanSource = pkgs.pixman.src;
   src = pixmanSource;
-  buildFlags = [ ];
+  buildFlags = [
+    "-Dopenmp=disabled"
+    "-Dgtk=disabled"
+    "-Dtests=disabled"
+    "-Ddemos=disabled"
+  ];
   patches = [ ];
 in
 pkgs.stdenv.mkDerivation {

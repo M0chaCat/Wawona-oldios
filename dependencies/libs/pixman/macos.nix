@@ -17,6 +17,9 @@ pkgs.stdenv.mkDerivation {
   version = pkgs.pixman.version;
   inherit src;
   
+  # We need to access /Applications/Xcode.app for the SDK and toolchain
+  __noChroot = true;
+
   nativeBuildInputs = with pkgs; [
     meson
     ninja
@@ -33,14 +36,15 @@ pkgs.stdenv.mkDerivation {
   buildInputs = [ ];
   
   preConfigure = ''
-    if [ -z "''${XCODE_APP:-}" ]; then
-      XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode || true)
-      if [ -n "$XCODE_APP" ]; then
-        export XCODE_APP
-        export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
-        export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
-        export SDKROOT="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-      fi
+    # Strip Nix stdenv's DEVELOPER_DIR to bypass any store fallbacks
+    unset DEVELOPER_DIR
+
+    XCODE_APP=$(${xcodeUtils.findXcodeScript}/bin/find-xcode || true)
+    if [ -n "$XCODE_APP" ]; then
+      export XCODE_APP
+      export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
+      export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+      export SDKROOT="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
     fi
     
     export CFLAGS="-isysroot $SDKROOT -mmacosx-version-min=26.0 -fPIC $CFLAGS"
@@ -51,6 +55,7 @@ pkgs.stdenv.mkDerivation {
     # Disable auto features to prevent architecture-specific checks
     "-Dauto_features=disabled"
     # Disable optional features
+    "-Dopenmp=disabled"
     "-Dgtk=disabled"
     "-Dlibpng=disabled"
     "-Dtests=disabled"
