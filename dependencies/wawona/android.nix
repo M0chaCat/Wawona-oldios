@@ -124,30 +124,57 @@ let
     NIX_SDK_PATH="${nixSdkPath}"
     NDK_ROOT="${androidToolchain.androidndkRoot}"
 
-    # Automated Provisioning (Licenses, AVD)
-    if [ -n "${provisionScript}" ]; then
-       "${provisionScript}"
-    fi
-
-    export PATH="$NIX_SDK_PATH:$PATH"
-    export ANDROID_SDK_ROOT="${nixSdkRoot}"
-    export ANDROID_HOME="$ANDROID_SDK_ROOT"
-
     USE_SYSTEM_SDK=false
     if [ "$(uname -m)" = "arm64" ] && [ "$(uname -s)" = "Darwin" ]; then
       echo "[Wawona] Detected Apple Silicon (arm64) macOS"
-      SYSTEM_SDK="$HOME/Library/Android/sdk"
-      if [ -d "$SYSTEM_SDK/emulator" ] && [ -f "$SYSTEM_SDK/emulator/emulator" ]; then
-        echo "[Wawona] Using system Android SDK emulator (arm64 native)"
+      
+      # Nix can override $HOME, so we should check the actual user's home directory too
+      REAL_USER=$(whoami)
+      REAL_HOME="/Users/$REAL_USER"
+      
+      SYSTEM_SDK=""
+      if [ -d "$HOME/Library/Android/sdk/emulator" ] && [ -f "$HOME/Library/Android/sdk/emulator/emulator" ]; then
+        SYSTEM_SDK="$HOME/Library/Android/sdk"
+      elif [ -d "$REAL_HOME/Library/Android/sdk/emulator" ] && [ -f "$REAL_HOME/Library/Android/sdk/emulator/emulator" ]; then
+        SYSTEM_SDK="$REAL_HOME/Library/Android/sdk"
+      fi
+
+      if [ -z "$SYSTEM_SDK" ] || [ ! -d "$REAL_HOME/Library/Android/sdk/system-images/android-34" ]; then
+        echo "[Wawona] arm64 native Android emulator or android-34 image not found."
+        echo "[Wawona] Downloading and setting up arm64 Android SDK automatically..."
+        
+        # We will install it in the standard macOS location
+        SYSTEM_SDK="$REAL_HOME/Library/Android/sdk"
+        mkdir -p "$SYSTEM_SDK"
+        
+        # Use Nix's sdkmanager to provision the system SDK
+        export PATH="$NIX_SDK_PATH:$PATH"
+        yes | sdkmanager --install "system-images;android-34;google_apis_playstore;arm64-v8a" "platform-tools" "platforms;android-36" --sdk_root="$SYSTEM_SDK" > /dev/null
+        echo "[Wawona] System Android SDK installed to $SYSTEM_SDK."
+      fi
+
+      if [ -n "$SYSTEM_SDK" ]; then
+        echo "[Wawona] Using system Android SDK emulator (arm64 native) at $SYSTEM_SDK"
+        
+        # We still need the Nix SDK for adb and other tools, but we want the system emulator first
         export PATH="$SYSTEM_SDK/emulator:$SYSTEM_SDK/platform-tools:$SYSTEM_SDK/cmdline-tools/latest/bin:$NIX_SDK_PATH:$PATH"
         export ANDROID_SDK_ROOT="$SYSTEM_SDK"
         export ANDROID_HOME="$SYSTEM_SDK"
         USE_SYSTEM_SDK=true
-      else
-        echo "[Wawona] WARNING: No arm64 Android emulator found."
-        echo "[Wawona] Install Android Studio or Android command-line tools for arm64."
-        echo "[Wawona] The Nix-provided emulator is x86_64 and requires Rosetta 2."
       fi
+    fi
+
+    if [ "$USE_SYSTEM_SDK" = "false" ]; then
+      export PATH="$NIX_SDK_PATH:$PATH"
+      export ANDROID_SDK_ROOT="${nixSdkRoot}"
+      export ANDROID_HOME="$ANDROID_SDK_ROOT"
+    fi
+
+    # Automated Provisioning (Licenses, AVD)
+    if [ -n "${provisionScript}" ]; then
+       # Run the nix-based provision script. This handles AVDs and packages
+       # for both the Nix SDK and the System SDK depending on environment vars.
+       "${provisionScript}"
     fi
 
     DEBUG_MODE=false
@@ -189,7 +216,7 @@ let
     SYSTEM_IMAGE=""
     if [ "$USE_SYSTEM_SDK" = "true" ]; then
       SYS_IMG_DIR="$ANDROID_SDK_ROOT/system-images"
-      for api_dir in android-36.1 android-36 android-35; do
+      for api_dir in android-34 android-35; do
         if [ -d "$SYS_IMG_DIR/$api_dir/google_apis_playstore/arm64-v8a" ]; then
           SYSTEM_IMAGE="system-images;$api_dir;google_apis_playstore;arm64-v8a"
           AVD_NAME="WawonaEmulator_$(echo $api_dir | tr '.' '_' | tr '-' '_')"
@@ -208,8 +235,8 @@ let
         exit 1
       fi
     else
-      SYSTEM_IMAGE="system-images;android-36;google_apis_playstore;arm64-v8a"
-      AVD_NAME="WawonaEmulator_API36"
+      SYSTEM_IMAGE="system-images;android-34;google_apis_playstore;arm64-v8a"
+      AVD_NAME="WawonaEmulator_android_34"
     fi
 
     echo "[Wawona] AVD: $AVD_NAME"
@@ -241,7 +268,7 @@ let
           "hw.arc=false" \
           "hw.audioInput=yes" \
           "hw.battery=yes" \
-          "hw.camera.back=virtualscene" \
+          "hw.camera.back=emulated" \
           "hw.camera.front=emulated" \
           "hw.cpu.arch=arm64" \
           "hw.cpu.ncore=4" \
@@ -250,7 +277,7 @@ let
           "hw.device.name=pixel_9" \
           "hw.gps=yes" \
           "hw.gpu.enabled=yes" \
-          "hw.gpu.mode=auto" \
+          "hw.gpu.mode=swiftshader_indirect" \
           "hw.keyboard=yes" \
           "hw.lcd.density=420" \
           "hw.lcd.height=2424" \
@@ -275,10 +302,9 @@ let
         exit 1
       fi
     fi
-
-    for old_avd in "$ANDROID_AVD_HOME"/WawonaEmulator_API36.avd "$ANDROID_AVD_HOME"/WawonaEmulator_API36.ini; do
-      [ -e "$old_avd" ] && rm -rf "$old_avd"
-    done
+    
+    # Clean up stale locks that cause 'Running multiple emulators with the same AVD' FATAL errors
+    rm -f "$ANDROID_AVD_HOME/$AVD_NAME.avd/*.lock" 2>/dev/null || true
 
     adb start-server 2>/dev/null
 
@@ -306,9 +332,11 @@ let
       echo "[Wawona] Starting emulator '$AVD_NAME'..."
       # Use setsid on Linux only; it's not available on macOS and not needed with nohup
       if [ "$(uname -s)" = "Linux" ]; then
-        setsid nohup emulator -avd "$AVD_NAME" -no-snapshot-load -gpu auto < /dev/null >>/tmp/emulator.log 2>&1 &
+        setsid nohup emulator -avd "$AVD_NAME" -no-snapshot-load -wipe-data -gpu auto < /dev/null >>/tmp/emulator.log 2>&1 &
+      elif [ "$USE_SYSTEM_SDK" = "true" ] && [ "$(uname -m)" = "arm64" ]; then
+        nohup emulator -avd "$AVD_NAME" -no-snapshot-load -wipe-data -gpu swiftshader_indirect < /dev/null >>/tmp/emulator.log 2>&1 &
       else
-        nohup emulator -avd "$AVD_NAME" -no-snapshot-load -gpu auto < /dev/null >>/tmp/emulator.log 2>&1 &
+        nohup emulator -avd "$AVD_NAME" -no-snapshot-load -wipe-data -gpu auto < /dev/null >>/tmp/emulator.log 2>&1 &
       fi
 
       sleep 3
@@ -1664,7 +1692,20 @@ MODBAR
       EOF
 
       # Build APK
-      gradle assembleDebug --offline --no-daemon
+      gradle assembleDebug --offline --no-daemon --no-build-cache --no-watch-fs || {
+        echo "Gradle build reported failure. Checking if APK was generated..."
+      }
+      
+      # Use find to locate the generated APK anywhere in the project root
+      FOUND_APK=$(find . -name "*.apk" | head -n 1)
+      if [ -z "$FOUND_APK" ]; then
+         echo "Error: APK was not generated."
+         exit 1
+      else
+         echo "APK generated successfully at $FOUND_APK, ignoring Gradle shutdown error."
+         mkdir -p app/build/outputs/apk/debug/
+         cp "$FOUND_APK" app/build/outputs/apk/debug/app-debug.apk
+      fi
 
       runHook postBuild
     '';

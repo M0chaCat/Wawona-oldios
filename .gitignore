@@ -131,4 +131,4 @@ src/core/wayland/protocol/wlroots/*.rs
 
 mesa/
 scripts/setup_inspiration.sh
-Inspiration/
+Inspiration/*.zip
