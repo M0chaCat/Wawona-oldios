@@ -76,6 +76,8 @@ pkgs.stdenv.mkDerivation {
 
   configurePhase = ''
     runHook preConfigure
+    export ac_cv_func_malloc_0_nonnull=yes
+    export ac_cv_func_realloc_0_nonnull=yes
     ./configure --prefix=$out --host=arm-apple-darwin
     runHook postConfigure
   '';

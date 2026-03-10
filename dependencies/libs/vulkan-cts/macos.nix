@@ -2,7 +2,6 @@
 {
   lib,
   pkgs,
-  kosmickrisp ? null,
   buildTargets ? "deqp-vk",
 }:
 
@@ -60,17 +59,11 @@ pkgs.stdenv.mkDerivation (finalAttrs: {
     [ -f external/openglcts/modules/cts-runner ] && cp -a external/openglcts/modules/cts-runner $out/bin/ || true
   '';
 
-  postFixup = let
-    vulkanLoader = pkgs.vulkan-loader;
-    icdPath = if kosmickrisp != null
-      then "${kosmickrisp}/share/vulkan/icd.d/kosmickrisp_icd.json"
-      else "";
-  in ''
+  postFixup = ''
     if [ -f $out/bin/deqp-vk ]; then
-      install_name_tool -add_rpath "${vulkanLoader}/lib" $out/bin/deqp-vk || true
+      install_name_tool -add_rpath "${pkgs.vulkan-loader}/lib" $out/bin/deqp-vk || true
       wrapProgram $out/bin/deqp-vk \
-        --add-flags "--deqp-archive-dir=$out/archive-dir" \
-        ${lib.optionalString (kosmickrisp != null) ''--set VK_DRIVER_FILES "${icdPath}"''}
+        --add-flags "--deqp-archive-dir=$out/archive-dir"
     fi
   '';
 

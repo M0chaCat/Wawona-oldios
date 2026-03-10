@@ -9,7 +9,6 @@
 let
   common = import ./common.nix { inherit pkgs; };
   xcodeUtils = import ../../utils/xcode-wrapper.nix { inherit lib pkgs; };
-  kosmickrisp = buildModule.buildForIOS "kosmickrisp" { };
 in
 pkgs.stdenv.mkDerivation (finalAttrs: {
   pname = "vulkan-cts-ios";
@@ -54,7 +53,6 @@ pkgs.stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    kosmickrisp
     pkgs.vulkan-headers
     pkgs.vulkan-utility-libraries
     pkgs.zlib

@@ -139,8 +139,8 @@ let
         SYSTEM_SDK="$REAL_HOME/Library/Android/sdk"
       fi
 
-      if [ -z "$SYSTEM_SDK" ] || [ ! -d "$REAL_HOME/Library/Android/sdk/system-images/android-34" ]; then
-        echo "[Wawona] arm64 native Android emulator or android-34 image not found."
+      if [ -z "$SYSTEM_SDK" ] || [ ! -d "$REAL_HOME/Library/Android/sdk/system-images/android-36" ]; then
+        echo "[Wawona] arm64 native Android emulator or android-36 image not found."
         echo "[Wawona] Downloading and setting up arm64 Android SDK automatically..."
         
         # We will install it in the standard macOS location
@@ -149,7 +149,7 @@ let
         
         # Use Nix's sdkmanager to provision the system SDK
         export PATH="$NIX_SDK_PATH:$PATH"
-        yes | sdkmanager --install "system-images;android-34;google_apis_playstore;arm64-v8a" "platform-tools" "platforms;android-36" --sdk_root="$SYSTEM_SDK" > /dev/null
+        yes | sdkmanager --install "system-images;android-36;google_apis_playstore;arm64-v8a" "platform-tools" "platforms;android-36" --sdk_root="$SYSTEM_SDK" > /dev/null
         echo "[Wawona] System Android SDK installed to $SYSTEM_SDK."
       fi
 
@@ -216,7 +216,7 @@ let
     SYSTEM_IMAGE=""
     if [ "$USE_SYSTEM_SDK" = "true" ]; then
       SYS_IMG_DIR="$ANDROID_SDK_ROOT/system-images"
-      for api_dir in android-34 android-35; do
+      for api_dir in android-36.1 android-36 android-35; do
         if [ -d "$SYS_IMG_DIR/$api_dir/google_apis_playstore/arm64-v8a" ]; then
           SYSTEM_IMAGE="system-images;$api_dir;google_apis_playstore;arm64-v8a"
           AVD_NAME="WawonaEmulator_$(echo $api_dir | tr '.' '_' | tr '-' '_')"
@@ -235,8 +235,8 @@ let
         exit 1
       fi
     else
-      SYSTEM_IMAGE="system-images;android-34;google_apis_playstore;arm64-v8a"
-      AVD_NAME="WawonaEmulator_android_34"
+      SYSTEM_IMAGE="system-images;android-36;google_apis_playstore;arm64-v8a"
+      AVD_NAME="WawonaEmulator_API36"
     fi
 
     echo "[Wawona] AVD: $AVD_NAME"

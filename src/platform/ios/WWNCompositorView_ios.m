@@ -1397,8 +1397,6 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
 
 // --- Selection ---
 
-@synthesize selectedTextRange;
-
 - (UITextRange *)selectedTextRange {
   return [WWNTextRange rangeWithStart:(NSInteger)_selectedRange.location
                                   end:(NSInteger)NSMaxRange(_selectedRange)];
@@ -1592,15 +1590,32 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
   return nil;
 }
 
-// --- Writing direction ---
-
-- (UITextWritingDirection)
-    baseWritingDirectionForPosition:(nonnull UITextPosition *)position
-                        inDirection:(UITextStorageDirection)direction {
-  return UITextWritingDirectionLeftToRight;
+- (nullable UITextPosition *)positionWithinRange:(UITextRange *)range
+                           farthestInDirection:(UITextLayoutDirection)direction {
+  WWNTextRange *r = (WWNTextRange *)range;
+  if (!r) return nil;
+  // Simplistic stub: return start or end based on direction
+  if (direction == UITextLayoutDirectionLeft || direction == UITextLayoutDirectionUp) {
+    return r.start;
+  }
+  return r.end;
 }
 
-- (void)setBaseWritingDirection:(UITextWritingDirection)writingDirection
+- (nullable UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)position
+                                                inDirection:(UITextLayoutDirection)direction {
+  // Stub
+  return nil;
+}
+
+// --- Writing direction ---
+
+- (NSWritingDirection)
+    baseWritingDirectionForPosition:(nonnull UITextPosition *)position
+                        inDirection:(UITextStorageDirection)direction {
+  return NSWritingDirectionLeftToRight;
+}
+
+- (void)setBaseWritingDirection:(NSWritingDirection)writingDirection
                        forRange:(UITextRange *)range {
   // No-op — Wayland clients manage their own writing direction.
 }

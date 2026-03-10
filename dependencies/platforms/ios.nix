@@ -71,17 +71,6 @@ in
           simulator
           ;
       }
-    else if name == "kosmickrisp" then
-      (import ../libs/kosmickrisp/ios.nix) {
-        inherit
-          lib
-          pkgs
-          buildPackages
-          common
-          buildModule
-          simulator
-          ;
-      }
     else if name == "zlib" then
       (import ../libs/zlib/ios.nix) {
         inherit
@@ -173,6 +162,17 @@ in
     # Note: libssh2 removed - using OpenSSH binary instead
     else if name == "mbedtls" then
       (import ../libs/mbedtls/ios.nix) {
+        inherit
+          lib
+          pkgs
+          buildPackages
+          common
+          buildModule
+          simulator
+          ;
+      }
+    else if name == "sshpass" then
+      (import ../libs/sshpass/ios.nix) {
         inherit
           lib
           pkgs

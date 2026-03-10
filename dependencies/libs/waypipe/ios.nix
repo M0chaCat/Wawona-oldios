@@ -28,8 +28,6 @@ let
     sha256 = "sha256-Tbd/yY90yb2+/ODYVL3SudHaJCGJKatZ9FuGM2uAX+8=";
   };
   src = fetchSource waypipeSource;
-  # Vulkan driver for iOS: kosmickrisp (for dmabuf)
-  kosmickrisp = buildModule.buildForIOS "kosmickrisp" { inherit simulator; };
   libwayland = buildModule.buildForIOS "libwayland" { inherit simulator; };
   # Compression libraries
   zstd = buildModule.buildForIOS "zstd" { inherit simulator; };
@@ -106,7 +104,6 @@ myRustPlatform.buildRustPackage {
   __noChroot = true;
 
   buildInputs = [
-    kosmickrisp
     vulkan-loader
     libwayland
     zstd
@@ -117,8 +114,8 @@ myRustPlatform.buildRustPackage {
     openssl-ios # iOS cross-compiled OpenSSL for libssh2-sys openssl-sys backend
   ];
 
-  # dmabuf, compression, in-process ssh, and video (static-only FFmpeg path)
-  buildFeatures = [ "dmabuf" "lz4" "zstd" "with_libssh2" "video" ];
+  # compression, in-process ssh, and video (static-only FFmpeg path)
+  buildFeatures = [ "lz4" "zstd" "with_libssh2" "video" ];
 
   preConfigure = ''
         # Strip Nix stdenv's DEVELOPER_DIR to bypass the apple-sdk-14.4 fallback
@@ -166,7 +163,7 @@ myRustPlatform.buildRustPackage {
         export RUSTC_LINKER="$CC"
 
         # Set up library search paths
-        export LIBRARY_PATH="${kosmickrisp}/lib:${vulkan-loader}/lib:${libwayland}/lib:${zstd}/lib:${lz4}/lib:${libssh2}/lib:${mbedtls}/lib:${openssl-ios}/lib:${ffmpeg}/lib:$LIBRARY_PATH"
+        export LIBRARY_PATH="${vulkan-loader}/lib:${libwayland}/lib:${zstd}/lib:${lz4}/lib:${libssh2}/lib:${mbedtls}/lib:${openssl-ios}/lib:${ffmpeg}/lib:$LIBRARY_PATH"
         
         # Use Rust's built-in target
         export CARGO_BUILD_TARGET="${cargoTarget}"
@@ -194,8 +191,6 @@ myRustPlatform.buildRustPackage {
         export BINDGEN="${pkgs.rust-bindgen}/bin/bindgen"
         export PATH="${pkgs.rust-bindgen}/bin:$PATH"
         
-        echo "Vulkan driver (kosmickrisp) library path: ${kosmickrisp}/lib"
-        ls -la "${kosmickrisp}/lib/" || echo "Warning: kosmickrisp lib directory not found"
         
   mkdir -p .cargo
   cat > .cargo/config.toml <<CARGO_CONFIG
@@ -223,7 +218,7 @@ CARGO_CONFIG
     export PKG_CONFIG_ALLOW_CROSS=1
     
     # with_libssh2 is CRITICAL for iOS - enables in-process SSH (no subprocess spawn)
-    cargo build --lib --target ${cargoTarget} --release --no-default-features --features "dmabuf,lz4,zstd,with_libssh2,video"
+    cargo build --lib --target ${cargoTarget} --release --no-default-features --features "lz4,zstd,with_libssh2,video"
     
     runHook postBuild
   '';

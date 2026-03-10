@@ -1,5 +1,8 @@
 # Wawona
 
+[![Nix CI (Linux/Android)](https://github.com/aspauldingcode/Wawona/actions/workflows/nix.yml/badge.svg?branch=main&event=push&job=build-linux)](https://github.com/aspauldingcode/Wawona/actions/workflows/nix.yml)
+[![Nix CI (macOS/iOS)](https://github.com/aspauldingcode/Wawona/actions/workflows/nix.yml/badge.svg?branch=main&event=push&job=build-macos)](https://github.com/aspauldingcode/Wawona/actions/workflows/nix.yml)
+
 **Wawona** is a native Wayland Compositor for macOS, iOS, and Android.
 <div align="center">
   <img src="gallery/wawona_nested_plasma.png" alt="Wawona - Wayland Compositor Preview 1" width="800"/>
@@ -50,6 +53,12 @@ See [Usage Guide](docs/usage.md) and [Settings Reference](docs/settings.md).
 ### Why Nix?
 
 I use Nix to maintain a clean repository free of vendored dependency source code while ensuring hermetic, reproducible builds across all platforms. Nix allows us to define precise build environments for iOS, macOS, and Android without polluting your system.
+
+#### Reproducibility & Usability
+
+- **Hermetic Builds**: Every dependency, from the Rust toolchain to system libraries like `libwayland` or `ffmpeg`, is pinned to exact versions in `flake.lock`. This guarantees that if it builds on CI, it will build on your machine.
+- **Zero-Config Environments**: Running `nix develop` (or using `direnv`) automatically enters a shell with all required compilers, headers, and auxiliary tools (like `xcodegen` or `android-sdk`) ready to go.
+- **Composable Modules**: The `flake.nix` exports clean, reusable packages and development shells. You can easily integrate Wawona into other NixOS configurations or use its individual modules as building blocks for your own Wayland projects.
 
 > _B`*`tch, I worked hard to make nix your ONLY dependency, use it!_
 

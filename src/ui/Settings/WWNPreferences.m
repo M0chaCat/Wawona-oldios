@@ -151,6 +151,7 @@
 - (void)debouncedReloadData;
 #if !TARGET_OS_IPHONE
 - (void)showSection:(NSInteger)idx;
+- (void)toggleMacOSPasswordVisibility:(NSButton *)sender;
 #endif
 @end
 
@@ -168,48 +169,55 @@ static UIImage *WWNAboutLogo(void) {
   UIImage *img = nil;
 
   img = [UIImage imageNamed:@"Wawona-iOS-Dark-1024x1024@1x.png"];
-  if (img) return img;
+  if (img)
+    return img;
 
   NSString *path =
       [bundle pathForResource:@"Wawona-iOS-Dark-1024x1024@1x" ofType:@"png"];
   if (path) {
     img = [UIImage imageWithContentsOfFile:path];
-    if (img) return img;
+    if (img)
+      return img;
   }
 
   path = [bundle pathForResource:@"Wawona-iOS-Dark-1024x1024" ofType:@"png"];
   if (path) {
     img = [UIImage imageWithContentsOfFile:path];
-    if (img) return img;
+    if (img)
+      return img;
   }
 
   NSString *bundleRoot = [bundle bundlePath];
-  NSString *direct =
-      [bundleRoot stringByAppendingPathComponent:
-                      @"Wawona-iOS-Dark-1024x1024@1x.png"];
+  NSString *direct = [bundleRoot
+      stringByAppendingPathComponent:@"Wawona-iOS-Dark-1024x1024@1x.png"];
   if ([fm fileExistsAtPath:direct]) {
     img = [UIImage imageWithContentsOfFile:direct];
-    if (img) return img;
+    if (img)
+      return img;
   }
 
-  direct = [bundleRoot stringByAppendingPathComponent:
-                           @"Wawona-iOS-Dark-1024x1024.png"];
+  direct = [bundleRoot
+      stringByAppendingPathComponent:@"Wawona-iOS-Dark-1024x1024.png"];
   if ([fm fileExistsAtPath:direct]) {
     img = [UIImage imageWithContentsOfFile:direct];
-    if (img) return img;
+    if (img)
+      return img;
   }
 
   img = [UIImage imageNamed:@"Wawona"];
-  if (img) return img;
+  if (img)
+    return img;
 
   path = [bundle pathForResource:@"Wawona" ofType:@"png"];
   if (path) {
     img = [UIImage imageWithContentsOfFile:path];
-    if (img) return img;
+    if (img)
+      return img;
   }
 
   img = [UIImage imageNamed:@"Wawona-iOS-Light-1024x1024@1x.png"];
-  if (img) return img;
+  if (img)
+    return img;
 
   return nil;
 }
@@ -965,13 +973,11 @@ static UIImage *WWNAboutLogo(void) {
 
 - (NSString *)getOpenSSHVersion {
   NSString *sshPath = nil;
-  NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
   NSFileManager *fm = [NSFileManager defaultManager];
 
 #if TARGET_OS_IPHONE
   // iOS: Report libssh2 version (used instead of OpenSSH binary)
   (void)sshPath;
-  (void)bundlePath;
   (void)fm;
   return [self getLibSSH2Version];
 #else
@@ -2818,6 +2824,33 @@ static UIImage *WWNAboutLogo(void) {
   });
 }
 
+#if !TARGET_OS_IPHONE
+// Action for toggling password visibility in macOS dialog
+- (void)toggleMacOSPasswordVisibility:(NSButton *)sender {
+  NSSecureTextField *secureField =
+      objc_getAssociatedObject(sender, "secureField");
+  NSTextField *plainField = objc_getAssociatedObject(sender, "plainField");
+  NSNumber *isSecureNum = objc_getAssociatedObject(sender, "isSecure");
+  BOOL isSecure = isSecureNum ? isSecureNum.boolValue : YES;
+
+  if (isSecure) {
+    plainField.stringValue = secureField.stringValue;
+    secureField.hidden = YES;
+    plainField.hidden = NO;
+    sender.image = [NSImage imageWithSystemSymbolName:@"eye.slash"
+                             accessibilityDescription:@"Hide password"];
+    objc_setAssociatedObject(sender, "isSecure", @NO, OBJC_ASSOCIATION_RETAIN);
+  } else {
+    secureField.stringValue = plainField.stringValue;
+    plainField.hidden = YES;
+    secureField.hidden = NO;
+    sender.image = [NSImage imageWithSystemSymbolName:@"eye"
+                             accessibilityDescription:@"Show password"];
+    objc_setAssociatedObject(sender, "isSecure", @YES, OBJC_ASSOCIATION_RETAIN);
+  }
+}
+#endif
+
 - (void)runnerDidReceiveSSHError:(NSString *)error {
   // Log error to status text
   NSString *errorLine =
@@ -3073,7 +3106,7 @@ static UIImage *WWNAboutLogo(void) {
       sw.enabled = NO;
       cell.textLabel.textColor = [UIColor secondaryLabelColor];
       cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-    // iOS: Force SSD is always on; CSD is not supported on iOS.
+      // iOS: Force SSD is always on; CSD is not supported on iOS.
     } else if ([item.key isEqualToString:@"ForceServerSideDecorations"]) {
       sw.on = YES;
       sw.enabled = NO;
@@ -3276,8 +3309,7 @@ static UIImage *WWNAboutLogo(void) {
 
       // App title
       UILabel *titleLabel = [[UILabel alloc] init];
-      titleLabel.font =
-          [UIFont systemFontOfSize:28 weight:UIFontWeightBold];
+      titleLabel.font = [UIFont systemFontOfSize:28 weight:UIFontWeightBold];
       titleLabel.textAlignment = NSTextAlignmentCenter;
       titleLabel.tag = 902;
       [stack addArrangedSubview:titleLabel];
@@ -3305,14 +3337,10 @@ static UIImage *WWNAboutLogo(void) {
     }
 
     // Populate
-    UIImageView *logo =
-        [headerCell.contentView viewWithTag:901];
-    UILabel *titleLabel =
-        (UILabel *)[headerCell.contentView viewWithTag:902];
-    UILabel *versionLabel =
-        (UILabel *)[headerCell.contentView viewWithTag:903];
-    UILabel *descLabel =
-        (UILabel *)[headerCell.contentView viewWithTag:904];
+    UIImageView *logo = [headerCell.contentView viewWithTag:901];
+    UILabel *titleLabel = (UILabel *)[headerCell.contentView viewWithTag:902];
+    UILabel *versionLabel = (UILabel *)[headerCell.contentView viewWithTag:903];
+    UILabel *descLabel = (UILabel *)[headerCell.contentView viewWithTag:904];
 
     UIImage *logoImage = WWNAboutLogo();
     logo.image = logoImage;
@@ -3320,8 +3348,7 @@ static UIImage *WWNAboutLogo(void) {
     titleLabel.text = item.title;
 
     NSString *ver = [self getWWNVersion];
-    versionLabel.text =
-        [NSString stringWithFormat:@"Version %@", ver];
+    versionLabel.text = [NSString stringWithFormat:@"Version %@", ver];
 
     descLabel.text = item.desc;
 
@@ -4348,8 +4375,12 @@ static UIImage *WWNAboutLogo(void) {
   NSTextField *tf = [obj object];
   if (tf == self.textControl) {
     // Forward to act: with tag
-    if ([self.delegate respondsToSelector:@selector(act:)]) {
-      [self.delegate performSelector:@selector(act:) withObject:tf];
+    SEL actSel = NSSelectorFromString(@"act:");
+    if ([self.delegate respondsToSelector:actSel]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+      [self.delegate performSelector:actSel withObject:tf];
+#pragma clang diagnostic pop
     }
   }
 }

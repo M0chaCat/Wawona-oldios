@@ -37,15 +37,6 @@ in
           buildModule
           ;
       }
-    else if name == "kosmickrisp" then
-      (import ../libs/kosmickrisp/macos.nix) {
-        inherit
-          lib
-          pkgs
-          common
-          buildModule
-          ;
-      }
     else if name == "zstd" then
       (import ../libs/zstd/macos.nix) {
         inherit

@@ -166,34 +166,64 @@
           inherit wawonaVersion;
         };
 
+        macosDeps = {
+          libwayland = toolchains.buildForMacOS "libwayland" { };
+          xkbcommon = toolchains.buildForMacOS "xkbcommon" { };
+          waypipe = toolchains.buildForMacOS "waypipe" { };
+          sshpass = toolchains.buildForMacOS "sshpass" { };
+        };
+
         # ── crate2nix Rust backends (per-crate caching!) ──
         backend-macos = pkgs.callPackage ./dependencies/wawona/rust-backend-c2n.nix {
           inherit crate2nix wawonaVersion toolchains nixpkgs;
           workspaceSrc = workspace-src-macos;
           platform = "macos";
-          nativeDeps = {
-            libwayland = toolchains.macos.libwayland;
-          };
+          nativeDeps = macosDeps;
+        };
+
+        iosDeps = {
+          xkbcommon = toolchains.buildForIOS "xkbcommon" {};
+          libffi = toolchains.buildForIOS "libffi" {};
+          libwayland = toolchains.buildForIOS "libwayland" {};
+          zstd = toolchains.buildForIOS "zstd" {};
+          lz4 = toolchains.buildForIOS "lz4" {};
+          zlib = toolchains.buildForIOS "zlib" {};
+          libssh2 = toolchains.buildForIOS "libssh2" {};
+          mbedtls = toolchains.buildForIOS "mbedtls" {};
+          openssl = toolchains.buildForIOS "openssl" {};
+          ffmpeg = toolchains.buildForIOS "ffmpeg" {};
+          epoll-shim = toolchains.buildForIOS "epoll-shim" {};
+          waypipe = toolchains.buildForIOS "waypipe" {};
+          weston-simple-shm = toolchains.buildForIOS "weston-simple-shm" {};
+          weston = toolchains.buildForIOS "weston" {};
+          pixman = toolchains.buildForIOS "pixman" {};
+          sshpass = toolchains.buildForIOS "sshpass" {};
         };
 
         backend-ios = pkgs.callPackage ./dependencies/wawona/rust-backend-c2n.nix {
           inherit crate2nix wawonaVersion toolchains nixpkgs;
           workspaceSrc = workspace-src-ios;
           platform = "ios";
-          nativeDeps = {
-            xkbcommon = toolchains.buildForIOS "xkbcommon" {};
-            libffi = toolchains.buildForIOS "libffi" {};
-            libwayland = toolchains.buildForIOS "libwayland" {};
-            zstd = toolchains.buildForIOS "zstd" {};
-            lz4 = toolchains.buildForIOS "lz4" {};
-            zlib = toolchains.buildForIOS "zlib" {};
-            libssh2 = toolchains.buildForIOS "libssh2" {};
-            mbedtls = toolchains.buildForIOS "mbedtls" {};
-            openssl = toolchains.buildForIOS "openssl" {};
-            kosmickrisp = toolchains.buildForIOS "kosmickrisp" {};
-            ffmpeg = toolchains.buildForIOS "ffmpeg" {};
-            epoll-shim = toolchains.buildForIOS "epoll-shim" {};
-          };
+          nativeDeps = iosDeps;
+        };
+
+        iosSimDeps = {
+          xkbcommon = toolchains.buildForIOS "xkbcommon" { simulator = true; };
+          libffi = toolchains.buildForIOS "libffi" { simulator = true; };
+          libwayland = toolchains.buildForIOS "libwayland" { simulator = true; };
+          zstd = toolchains.buildForIOS "zstd" { simulator = true; };
+          lz4 = toolchains.buildForIOS "lz4" { simulator = true; };
+          zlib = toolchains.buildForIOS "zlib" { simulator = true; };
+          libssh2 = toolchains.buildForIOS "libssh2" { simulator = true; };
+          mbedtls = toolchains.buildForIOS "mbedtls" { simulator = true; };
+          openssl = toolchains.buildForIOS "openssl" { simulator = true; };
+          ffmpeg = toolchains.buildForIOS "ffmpeg" { simulator = true; };
+          epoll-shim = toolchains.buildForIOS "epoll-shim" { simulator = true; };
+          waypipe = toolchains.buildForIOS "waypipe" { simulator = true; };
+          weston-simple-shm = toolchains.buildForIOS "weston-simple-shm" { simulator = true; };
+          weston = toolchains.buildForIOS "weston" { simulator = true; };
+          pixman = toolchains.buildForIOS "pixman" { simulator = true; };
+          sshpass = toolchains.buildForIOS "sshpass" { simulator = true; };
         };
 
         backend-ios-sim = pkgs.callPackage ./dependencies/wawona/rust-backend-c2n.nix {
@@ -201,20 +231,7 @@
           workspaceSrc = workspace-src-ios;
           platform = "ios";
           simulator = true;
-          nativeDeps = {
-            xkbcommon = toolchains.buildForIOS "xkbcommon" { simulator = true; };
-            libffi = toolchains.buildForIOS "libffi" { simulator = true; };
-            libwayland = toolchains.buildForIOS "libwayland" { simulator = true; };
-            zstd = toolchains.buildForIOS "zstd" { simulator = true; };
-            lz4 = toolchains.buildForIOS "lz4" { simulator = true; };
-            zlib = toolchains.buildForIOS "zlib" { simulator = true; };
-            libssh2 = toolchains.buildForIOS "libssh2" { simulator = true; };
-            mbedtls = toolchains.buildForIOS "mbedtls" { simulator = true; };
-            openssl = toolchains.buildForIOS "openssl" { simulator = true; };
-            kosmickrisp = toolchains.buildForIOS "kosmickrisp" { simulator = true; };
-            ffmpeg = toolchains.buildForIOS "ffmpeg" { simulator = true; };
-            epoll-shim = toolchains.buildForIOS "epoll-shim" { simulator = true; };
-          };
+          nativeDeps = iosSimDeps;
         };
 
         backend-android = pkgs.callPackage ./dependencies/wawona/rust-backend-c2n.nix {
@@ -358,34 +375,17 @@
           wawona = mainPackage;
           wawona-macos = wawona-macos;
           wawona-macos-backend = backend-macos;
-          wawona-ios-backend = backend-ios;
-          wawona-ios-sim-backend = backend-ios-sim;
-          wawona-android-backend = backend-android;
-          
-          # Mobile targets
-          wawona-android = wawona-android;
-          
-          androidSDK = androidSDK;
-          androidUtils = androidUtils;
-          
-          # Tooling
-          gradlegen = (pkgs.callPackage ./dependencies/generators/gradlegen.nix {
-            wawonaSrc = src;
-            wawonaAndroidProject = wawona-android.project;
-          }).generateScript;
+
+          wawona-macos-xcode-env = pkgs.buildEnv {
+            name = "wawona-macos-xcode-env";
+            paths = [ backend-macos ] ++ builtins.attrValues macosDeps;
+          };
           
           # Clients
           keyboard-test-client = keyboardTestClient;
-
-          # Vulkan CTS
-          vulkan-cts-android = vulkan-cts-android;
-
-          # GL CTS
-          gl-cts-android = gl-cts-android;
         } // (pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin (let
           vulkanCtsMacOS = pkgs.callPackage ./dependencies/libs/vulkan-cts/macos.nix {
             lib = pkgs.lib;
-            kosmickrisp = toolchains.buildForMacOS "kosmickrisp" { };
           };
           vulkanCtsIOS = pkgs.callPackage ./dependencies/libs/vulkan-cts/ios.nix {
             lib = pkgs.lib;
@@ -397,10 +397,7 @@
           };
           graphicsSmokeMacOS = pkgs.writeShellScriptBin "graphics-smoke" ''
             export XDG_RUNTIME_DIR="/tmp/wawona-$(id -u)"
-            if [ -z "''${VK_DRIVER_FILES:-}" ]; then
-              KRISP_ICD="${toolchains.buildForMacOS "kosmickrisp" { }}/share/vulkan/icd.d/kosmickrisp_icd.json"
-              [ -f "$KRISP_ICD" ] && export VK_DRIVER_FILES="$KRISP_ICD"
-            fi
+            export WAYLAND_DISPLAY="wayland-0"
             exec ${backend-macos}/bin/graphics-smoke "$@"
           '';
           graphics-validate = pkgs.callPackage ./dependencies/tests/graphics-validate.nix {
@@ -413,36 +410,36 @@
           };
         in {
           wawona-ios = wawona-ios;
+          wawona-ios-backend = backend-ios;
+          wawona-ios-sim-backend = backend-ios-sim;
+          wawona-ios-xcode-env = pkgs.buildEnv {
+            name = "wawona-ios-xcode-env";
+            paths = [ backend-ios ] ++ builtins.attrValues iosDeps;
+          };
+          wawona-ios-sim-xcode-env = pkgs.buildEnv {
+            name = "wawona-ios-sim-xcode-env";
+            paths = [ backend-ios-sim ] ++ builtins.attrValues iosSimDeps;
+          };
+
+          wawona-android = wawona-android;
+          wawona-android-backend = backend-android;
+          androidSDK = androidSDK;
+          androidUtils = androidUtils;
+          gradlegen = (pkgs.callPackage ./dependencies/generators/gradlegen.nix {
+            wawonaSrc = src;
+            wawonaAndroidProject = wawona-android.project;
+          }).generateScript;
+          vulkan-cts-android = vulkan-cts-android;
+          gl-cts-android = gl-cts-android;
+
           # Full Xcode project with both iOS + macOS targets
           xcodegen = (pkgs.callPackage ./dependencies/generators/xcodegen.nix {
              inherit wawonaVersion wawonaSrc;
              buildModule = toolchains;
              targetPkgs = pkgs; # For full project, use host pkgs (macOS)
-             rustBackendIOS = backend-ios;
-             rustBackendIOSSim = backend-ios-sim;
-             rustBackendMacOS = backend-macos;
-             includeMacOSTarget = true;
              rustPlatform = pkgs.rustPlatform;
-             libwaylandIOS = toolchains.buildForIOS "libwayland" { };
-             xkbcommonIOS = toolchains.buildForIOS "xkbcommon" { };
-             pixmanIOS = toolchains.buildForIOS "pixman" { };
-             libffiIOS = toolchains.buildForIOS "libffi" { };
-             opensslIOS = toolchains.buildForIOS "openssl" { };
-             libssh2IOS = toolchains.buildForIOS "libssh2" { };
-             mbedtlsIOS = toolchains.buildForIOS "mbedtls" { };
-             zstdIOS = toolchains.buildForIOS "zstd" { };
-             lz4IOS = toolchains.buildForIOS "lz4" { };
-             epollShimIOS = toolchains.buildForIOS "epoll-shim" { };
-             waypipeIOS = toolchains.buildForIOS "waypipe" { };
-             westonSimpleShmIOS = toolchains.buildForIOS "weston-simple-shm" { };
-             westonIOS = toolchains.buildForIOS "weston" { };
-             cairoIOS = null;
-             pangoIOS = null;
-             glibIOS = null;
-             harfbuzzIOS = null;
-             fontconfigIOS = null;
-             freetypeIOS = null;
-             libpngIOS = null;
+             inherit iosDeps iosSimDeps macosDeps;
+             macosWeston = weston;
           }).app;
           # iOS-only Xcode project (disabled: pkgsCross.iphone64 triggers infinite recursion in nixpkgs)
           # xcodegen-ios = (pkgs.callPackage ./dependencies/generators/xcodegen.nix {

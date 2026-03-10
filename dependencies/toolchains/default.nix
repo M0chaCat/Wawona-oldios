@@ -183,11 +183,6 @@ let
         inherit lib pkgs buildPackages common simulator;
         buildModule = iosModule;
       }
-    else if name == "kosmickrisp" then
-      (import ../libs/kosmickrisp/ios.nix) {
-        inherit lib pkgs buildPackages common simulator;
-        buildModule = iosModule;
-      }
     else if name == "epoll-shim" then
       (import ../libs/epoll-shim/ios.nix) {
         inherit lib pkgs buildPackages common simulator;
@@ -284,11 +279,6 @@ let
         inherit lib pkgs common;
         buildModule = macosModule;
       }
-    else if name == "kosmickrisp" then
-      (import ../libs/kosmickrisp/macos.nix) {
-        inherit lib pkgs common;
-        buildModule = macosModule;
-      }
     else if name == "spirv-tools" then
       (import ../libs/spirv-tools/macos.nix) {
         inherit lib pkgs common;
@@ -341,7 +331,6 @@ let
     else if name == "vulkan-cts" then
       (import ../libs/vulkan-cts/macos.nix) {
         inherit lib pkgs;
-        kosmickrisp = macosModule.buildForMacOS "kosmickrisp" { };
       }
     else
       (import ../platforms/macos.nix {
@@ -356,7 +345,6 @@ let
   # macOS package set used by wawona/macos.nix (buildModule.macos.libwayland, etc.)
   macos = {
     libwayland = buildForMacOSInternal "libwayland" { };
-    kosmickrisp = buildForMacOSInternal "kosmickrisp" { };
   };
 
 in

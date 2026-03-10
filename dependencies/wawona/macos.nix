@@ -14,7 +14,6 @@
   sshpassVersion ? "unknown",
   waypipeVersion ? "unknown",
   waypipe,
-  kosmickrisp ? buildModule.macos.kosmickrisp,
   moltenvk ? pkgs.moltenvk or null,
 }:
 
@@ -648,46 +647,9 @@ GEN_HEADER
                 find "$out/Applications/Wawona.app/Contents/Resources/bin" -type f -perm +111 -exec codesign --force --sign - --timestamp=none {} \; 2>/dev/null || true
             fi
 
-            # Bundle KosmicKrisp Vulkan driver (.dylib + ICD manifest)
-            echo "DEBUG: Bundling KosmicKrisp Vulkan driver..."
+            # Prepare directories for Vulkan drivers
             mkdir -p $out/Applications/Wawona.app/Contents/Frameworks
             mkdir -p $out/Applications/Wawona.app/Contents/Resources/vulkan/icd.d
-            VK_DYLIB=""
-            for f in ${kosmickrisp}/lib/libvulkan_kosmickrisp*.dylib; do
-              if [ -f "$f" ]; then
-                VK_DYLIB="$f"
-                break
-              fi
-            done
-            if [ -z "$VK_DYLIB" ]; then
-              for f in ${kosmickrisp}/lib/*.dylib; do
-                if [ -f "$f" ]; then
-                  VK_DYLIB="$f"
-                  break
-                fi
-              done
-            fi
-            if [ -n "$VK_DYLIB" ] && [ -f "$VK_DYLIB" ]; then
-              VK_DYLIB_NAME=$(basename "$VK_DYLIB")
-              cp "$VK_DYLIB" "$out/Applications/Wawona.app/Contents/Frameworks/$VK_DYLIB_NAME"
-              cat > "$out/Applications/Wawona.app/Contents/Resources/vulkan/icd.d/kosmickrisp_icd.json" <<VK_ICD_EOF
-            {
-                "file_format_version": "1.0.1",
-                "ICD": {
-                    "library_path": "../../Frameworks/$VK_DYLIB_NAME",
-                    "api_version": "1.3.0",
-                    "is_portability_driver": true
-                }
-            }
-VK_ICD_EOF
-              echo "Bundled KosmicKrisp: $VK_DYLIB_NAME"
-              if command -v codesign >/dev/null 2>&1; then
-                codesign --force --sign - --timestamp=none "$out/Applications/Wawona.app/Contents/Frameworks/$VK_DYLIB_NAME" 2>/dev/null || echo "Warning: Failed to sign KosmicKrisp dylib"
-              fi
-            else
-              echo "Warning: KosmicKrisp .dylib not found in ${kosmickrisp}/lib/"
-              ls -la ${kosmickrisp}/lib/ 2>/dev/null || true
-            fi
 
             # Bundle MoltenVK Vulkan driver if available
             ${lib.optionalString (moltenvk != null) ''

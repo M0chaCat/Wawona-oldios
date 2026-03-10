@@ -60,7 +60,9 @@ static BOOL isAppBlacklisted(NSString *appId, NSString *executableName) {
 + (NSArray<NSString *> *)bundledApplicationSearchPaths {
   NSMutableArray<NSString *> *paths = [NSMutableArray array];
   NSBundle *mainBundle = [NSBundle mainBundle];
+#if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
   NSFileManager *fm = [NSFileManager defaultManager];
+#endif
 
 #if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
   // iOS: Check inside app bundle
@@ -186,7 +188,7 @@ static BOOL isAppBlacklisted(NSString *appId, NSString *executableName) {
       [WWNAppScanner bundledApplicationSearchPaths];
 
   WWNLog("LAUNCHER", @"Scanning %lu paths for bundled Wayland applications",
-        (unsigned long)searchPaths.count);
+         (unsigned long)searchPaths.count);
 
   for (NSString *searchPath in searchPaths) {
     if (![fm fileExistsAtPath:searchPath]) {
@@ -198,7 +200,7 @@ static BOOL isAppBlacklisted(NSString *appId, NSString *executableName) {
   }
 
   WWNLog("LAUNCHER", @"Found %lu Wayland applications",
-        (unsigned long)self.availableApps.count);
+         (unsigned long)self.availableApps.count);
 }
 
 - (void)scanDirectory:(NSString *)directory {
@@ -343,8 +345,8 @@ static BOOL isAppBlacklisted(NSString *appId, NSString *executableName) {
   // Verify executable exists
   if (!app.executablePath || ![[NSFileManager defaultManager]
                                  isExecutableFileAtPath:app.executablePath]) {
-    WWNLog("LAUNCHER", @"Warning: App %@ has no valid executable at %@", app.name,
-          app.executablePath);
+    WWNLog("LAUNCHER", @"Warning: App %@ has no valid executable at %@",
+           app.name, app.executablePath);
     return nil;
   }
 
@@ -457,13 +459,13 @@ static BOOL isAppBlacklisted(NSString *appId, NSString *executableName) {
   NSString *appName = [appPath lastPathComponent];
 
   // Launch in background thread
-  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-                 ^{
-                   WWNLog("LAUNCHER", @"Executing %@", appName);
-                   char *argv[] = {(char *)[appName UTF8String], NULL};
-                   int result = entry(1, argv);
-                   WWNLog("LAUNCHER", @"%@ exited with code %d", appName, result);
-                 });
+  dispatch_async(
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        WWNLog("LAUNCHER", @"Executing %@", appName);
+        char *argv[] = {(char *)[appName UTF8String], NULL};
+        int result = entry(1, argv);
+        WWNLog("LAUNCHER", @"%@ exited with code %d", appName, result);
+      });
 
   // Track as running
   self.runningProcesses[[appPath lastPathComponent]] = @{
@@ -499,7 +501,8 @@ static BOOL isAppBlacklisted(NSString *appId, NSString *executableName) {
     self.runningProcesses[processKey] =
         @{@"pid" : @(pid), @"path" : appPath, @"startTime" : [NSDate date]};
 
-    WWNLog("LAUNCHER", @"Launched %@ with PID %d", [appPath lastPathComponent], pid);
+    WWNLog("LAUNCHER", @"Launched %@ with PID %d", [appPath lastPathComponent],
+           pid);
     return YES;
   } else {
     WWNLog("LAUNCHER", @"Error: Fork failed for %@", appPath);

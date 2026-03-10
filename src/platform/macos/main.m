@@ -25,8 +25,8 @@
 #import "../../util/WWNLog.h"
 
 // Settings (for Vulkan driver configuration)
-#import "WWNSettings.h"
 #import "../../ui/Settings/WWNPreferencesManager.h"
+#import "WWNSettings.h"
 
 // C FFI for Rust Compositor window events
 typedef struct CWindowInfo {
@@ -47,9 +47,9 @@ extern void wawona_window_info_free(CWindowInfo *info);
 //
 
 #import "../../launcher/WWNLauncherClient.h"
-#import "../ios/WWNSceneDelegate.h"
 #import "../../ui/Settings/WWNPreferences.h"
 #import "../../ui/Settings/WWNSettingsSplitViewController.h"
+#import "../ios/WWNSceneDelegate.h"
 
 @interface WWNAppDelegate : NSObject <UIApplicationDelegate>
 @end
@@ -186,8 +186,7 @@ static void activate_existing_instance(void) {
       [NSRunningApplication runningApplicationsWithBundleIdentifier:bundleID];
   for (NSRunningApplication *app in runningApps) {
     if (app.processIdentifier != currentPID && !app.terminated) {
-      [app activateWithOptions:NSApplicationActivateAllWindows |
-                                NSApplicationActivateIgnoringOtherApps];
+      [app activateWithOptions:NSApplicationActivateAllWindows];
       break;
     }
   }
@@ -195,15 +194,17 @@ static void activate_existing_instance(void) {
 
 static BOOL acquire_single_instance_lock(void) {
   NSString *lockDir = [NSString stringWithFormat:@"/tmp/wawona-%d", getuid()];
-  [[NSFileManager defaultManager]
-      createDirectoryAtPath:lockDir
-withIntermediateDirectories:YES
-                 attributes:@{NSFilePosixPermissions : @0700}
-                      error:nil];
-  NSString *lockPath = [lockDir stringByAppendingPathComponent:@"instance.lock"];
+  [[NSFileManager defaultManager] createDirectoryAtPath:lockDir
+                            withIntermediateDirectories:YES
+                                             attributes:@{
+                                               NSFilePosixPermissions : @0700
+                                             }
+                                                  error:nil];
+  NSString *lockPath =
+      [lockDir stringByAppendingPathComponent:@"instance.lock"];
 
-  g_instance_lock_fd = open([lockPath fileSystemRepresentation],
-                            O_CREAT | O_RDWR, 0600);
+  g_instance_lock_fd =
+      open([lockPath fileSystemRepresentation], O_CREAT | O_RDWR, 0600);
   if (g_instance_lock_fd < 0) {
     // If lock setup fails, do not block startup.
     WWNLog("MAIN", @"Warning: failed to open single-instance lock file");
@@ -484,9 +485,7 @@ int main(int argc, char *argv[]) {
     uint32_t outputH = (uint32_t)fmin(768, screenH * 0.75);
 
     WWNCompositorBridge *rustCompositor = [WWNCompositorBridge sharedBridge];
-    [rustCompositor setOutputWidth:outputW
-                            height:outputH
-                             scale:(float)scale];
+    [rustCompositor setOutputWidth:outputW height:outputH scale:(float)scale];
 
     // Set initial SSD state
     BOOL forceSSD = WWNSettings_GetForceServerSideDecorations();
