@@ -668,6 +668,7 @@ typedef NS_ENUM(NSInteger, WWNTouchInputMode) {
   // The effect view is edge-to-edge (no corner radius) so it blends
   // seamlessly with the native iOS virtual keyboard beneath.
   if (@available(iOS 26, *)) {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
     UIGlassEffect *glass = [[UIGlassEffect alloc] init];
     UIVisualEffectView *glassView =
         [[UIVisualEffectView alloc] initWithEffect:glass];
@@ -675,6 +676,16 @@ typedef NS_ENUM(NSInteger, WWNTouchInputMode) {
     glassView.autoresizingMask =
         UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [bar addSubview:glassView];
+#else
+    UIBlurEffect *blur = [UIBlurEffect
+        effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
+    UIVisualEffectView *blurView =
+        [[UIVisualEffectView alloc] initWithEffect:blur];
+    blurView.frame = bar.bounds;
+    blurView.autoresizingMask =
+        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [bar addSubview:blurView];
+#endif
   } else {
     UIBlurEffect *blur = [UIBlurEffect
         effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
@@ -1359,7 +1370,8 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
     start = 0;
   if (end > (NSInteger)_textBuffer.length)
     end = _textBuffer.length;
-  NSRange replaceRange = NSMakeRange(start, MAX(0, end - start));
+  NSInteger rangeLen = (end - start > 0) ? (end - start) : 0;
+  NSRange replaceRange = NSMakeRange(start, (NSUInteger)rangeLen);
 
   WWNLog("IOS_VIEW", @"replaceRange: [%ld,%ld) with \"%@\"", (long)start,
          (long)end, text);
@@ -1372,8 +1384,8 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
   uint32_t deleteBefore = 0;
   uint32_t deleteAfter = 0;
   if (replaceRange.location < (NSUInteger)_selectedRange.location) {
-    deleteBefore = (uint32_t)MIN(
-        _selectedRange.location - replaceRange.location, replaceRange.length);
+    NSUInteger diff = _selectedRange.location - replaceRange.location;
+    deleteBefore = (uint32_t)((diff < replaceRange.length) ? diff : replaceRange.length);
   }
   if (NSMaxRange(replaceRange) > NSMaxRange(_selectedRange)) {
     deleteAfter =
@@ -1405,8 +1417,9 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
 - (void)setSelectedTextRange:(UITextRange *)range {
   WWNTextRange *r = (WWNTextRange *)range;
   if (r) {
+    NSInteger len = r.end.index - r.start.index;
     _selectedRange =
-        NSMakeRange(r.start.index, MAX(0, r.end.index - r.start.index));
+        NSMakeRange(r.start.index, (NSUInteger)(len > 0 ? len : 0));
   }
 }
 
@@ -1569,7 +1582,8 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
 
 - (CGRect)caretRectForPosition:(UITextPosition *)position {
   CGRect r = [self _cursorRectFromCompositor];
-  return CGRectMake(r.origin.x, r.origin.y, 2, MAX(r.size.height, 20));
+  CGFloat h = (r.size.height > 20) ? r.size.height : 20;
+  return CGRectMake(r.origin.x, r.origin.y, 2, h);
 }
 
 - (NSArray<UITextSelectionRect *> *)selectionRectsForRange:
@@ -1825,8 +1839,15 @@ static const NSTimeInterval kDoubleTapThreshold = 0.4;
     _touchTotalMovement += fabs(dx) + fabs(dy);
 
     // Update virtual pointer, clamped to view bounds
-    _pointerPos.x = MAX(0, MIN(self.bounds.size.width, _pointerPos.x + dx));
-    _pointerPos.y = MAX(0, MIN(self.bounds.size.height, _pointerPos.y + dy));
+    CGFloat clampedX = _pointerPos.x + dx;
+    if (clampedX < 0) clampedX = 0;
+    if (clampedX > self.bounds.size.width) clampedX = self.bounds.size.width;
+    _pointerPos.x = clampedX;
+
+    CGFloat clampedY = _pointerPos.y + dy;
+    if (clampedY < 0) clampedY = 0;
+    if (clampedY > self.bounds.size.height) clampedY = self.bounds.size.height;
+    _pointerPos.y = clampedY;
 
     [bridge injectPointerMotionForWindow:self.wwnWindowId
                                        x:_pointerPos.x
