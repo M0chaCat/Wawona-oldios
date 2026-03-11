@@ -121,7 +121,7 @@ pkgs.stdenv.mkDerivation {
         # Patch meson.build: librt does not exist on macOS (it's part of libSystem).
         # Make it optional so the build doesn't fail.
         if [ -f meson.build ]; then
-          sed -i'''''  -e "s|find_library('rt')|find_library('rt', required: false)|g" meson.build
+          substituteInPlace meson.build --replace "find_library('rt')" "find_library('rt', required: false)"
         fi
         
         if [ -f src/wayland-os.c ]; then
