@@ -668,7 +668,6 @@ typedef NS_ENUM(NSInteger, WWNTouchInputMode) {
   // The effect view is edge-to-edge (no corner radius) so it blends
   // seamlessly with the native iOS virtual keyboard beneath.
   if (@available(iOS 26, *)) {
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
     UIGlassEffect *glass = [[UIGlassEffect alloc] init];
     UIVisualEffectView *glassView =
         [[UIVisualEffectView alloc] initWithEffect:glass];
@@ -676,16 +675,6 @@ typedef NS_ENUM(NSInteger, WWNTouchInputMode) {
     glassView.autoresizingMask =
         UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [bar addSubview:glassView];
-#else
-    UIBlurEffect *blur = [UIBlurEffect
-        effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
-    UIVisualEffectView *blurView =
-        [[UIVisualEffectView alloc] initWithEffect:blur];
-    blurView.frame = bar.bounds;
-    blurView.autoresizingMask =
-        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [bar addSubview:blurView];
-#endif
   } else {
     UIBlurEffect *blur = [UIBlurEffect
         effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark];
