@@ -59,7 +59,8 @@ jobs:
           "xcodegen",
           "weston",
           "waypipe",
-          "wawona-android"
+          "wawona-android",
+          "wawona-android-backend"
         ]
     steps:
       - uses: actions/checkout@v4
