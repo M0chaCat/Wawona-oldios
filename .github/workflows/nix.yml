@@ -9,8 +9,16 @@ on:
 
 jobs:
   build-linux:
-    name: Build Linux/Android Targets
+    name: "Linux: ${{ matrix.target }}"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "wawona-android",
+          "wawona-android-backend",
+          "gradlegen"
+        ]
     permissions:
       contents: read
       id-token: write
@@ -33,20 +41,26 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Nix Flake Check
+        if: matrix.target == 'wawona-android'
         run: nix flake check
 
-      - name: Build Wawona Android
-        run: nix build .#wawona-android --print-build-logs
-
-      - name: Build Wawona Android Backend
-        run: nix build .#wawona-android-backend --print-build-logs
-
-      - name: Build Gradle Generator
-        run: nix build .#gradlegen --print-build-logs
+      - name: Build Target
+        run: nix build .#${{ matrix.target }} --print-build-logs
 
   build-macos:
-    name: Build macOS/iOS Targets
+    name: "macOS: ${{ matrix.target }}"
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "wawona-macos",
+          "wawona-ios",
+          "xcodegen",
+          "weston",
+          "waypipe",
+          "wawona-android"
+        ]
     steps:
       - uses: actions/checkout@v4
 
@@ -56,17 +70,5 @@ jobs:
       - name: Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Build Wawona macOS
-        run: nix build .#wawona-macos --print-build-logs
-
-      - name: Build Wawona iOS
-        run: nix build .#wawona-ios --print-build-logs
-
-      - name: Build Wawona Android
-        run: nix build .#wawona-android --print-build-logs
-
-      - name: Build Xcode Project Generator
-        run: nix build .#xcodegen --print-build-logs
-
-      - name: Build Weston
-        run: nix build .#weston --print-build-logs
+      - name: Build Target
+        run: nix build .#${{ matrix.target }} --print-build-logs
