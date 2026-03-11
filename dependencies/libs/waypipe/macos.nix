@@ -2291,11 +2291,7 @@ RUST_EOF
     # "dmabuf" - ENABLED (above): patched to not require ash/Vulkan
   ];
 
-  preConfigure = ''
-    MACOS_SDK="${pkgs.apple-sdk_26}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-    export SDKROOT="$MACOS_SDK"
-    export MACOSX_DEPLOYMENT_TARGET="26.0"
-    export DEVELOPER_DIR="${pkgs.apple-sdk_26}"
+  CARGO_BUILD_TARGET = "aarch64-apple-darwin";
 
   preConfigure = ''
     MACOS_SDK="/System/Library/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
@@ -2316,3 +2312,28 @@ RUST_EOF
     export CPP_INCLUDE_PATH="${zstd}/include:${lz4}/include:$CPP_INCLUDE_PATH"
     export BINDGEN_EXTRA_CLANG_ARGS="-I${zstd}/include -I${lz4}/include -isysroot $SDKROOT -mmacosx-version-min=26.0"
   '';
+
+  preBuild = ''
+    # Force cargo to recompile by removing any cached artifacts
+    rm -rf target || true
+    echo "Forcing fresh cargo build with features: lz4, zstd, dmabuf (no-default-features)"
+    echo "Source files: $(ls src/*.rs | head -5)"
+  '';
+
+  postInstall = ''
+    # Ensure binary was installed (cross-compilation puts it in target/<triple>/release/)
+    if [ ! -f "$out/bin/waypipe" ]; then
+      echo "Binary not found in standard location, checking cross-compile target..."
+      mkdir -p $out/bin
+      if [ -f "target/aarch64-apple-darwin/release/waypipe" ]; then
+        cp target/aarch64-apple-darwin/release/waypipe $out/bin/
+        echo "Installed waypipe from cross-compile target directory"
+      else
+        echo "ERROR: waypipe binary not found!"
+        find target -name "waypipe" -type f 2>/dev/null || echo "No waypipe binary found anywhere"
+        exit 1
+      fi
+    fi
+    echo "Waypipe built with native macOS IOSurface support"
+  '';
+}
