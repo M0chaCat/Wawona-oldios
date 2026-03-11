@@ -86,6 +86,8 @@ pkgs.stdenv.mkDerivation {
 
     # HOST compiler (runs on macOS)
     export HOST_CC="/usr/bin/clang"
+    export HOST_CFLAGS="-isysroot $MACOS_SDK_PATH"
+    export HOST_LDFLAGS="-isysroot $MACOS_SDK_PATH"
 
     # Flags for TARGET (iOS)
     export CFLAGS="-arch arm64 -isysroot $IOS_SDK_PATH -m${if simulator then "ios-simulator" else "iphoneos"}-version-min=26.0 -fembed-bitcode"
@@ -95,6 +97,9 @@ pkgs.stdenv.mkDerivation {
 
   configurePhase = ''
     runHook preConfigure
+
+    # Unset SDKROOT so FFmpeg's configure doesn't pass it to host checks
+    unset SDKROOT
 
     # Explicitly disable programs and runtime checks
     # Note: We set --host-cc to the macOS compiler to allow building helper tools
@@ -108,6 +113,8 @@ pkgs.stdenv.mkDerivation {
       --cc="$CC" \
       --cxx="$CXX" \
       --host-cc="$HOST_CC" \
+      --host-cflags="$HOST_CFLAGS" \
+      --host-ldflags="$HOST_LDFLAGS" \
       --ar="$AR" \
       --ranlib="$RANLIB" \
       --strip="$STRIP" \
